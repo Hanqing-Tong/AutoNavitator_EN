@@ -1,0 +1,148 @@
+SAM3 Semantic Segmentation API Documentation
+Version: v2.3.0
+Service Address: http://10.12.10.190:8004
+Basic Instructions:
+All POST interfaces use multipart/form-data form submission
+Global mutual exclusion serial inference, only one image task is processed at a time
+Returns a unified JSON structure, encoded in UTF-8
+Supported image formats: jpg, jpeg, png, bmp
+Maximum limit for the longer side of the image: 2560 pixels
+Maximum timeout for a single task inference: 120 seconds
+1. Health Check Interface
+【Endpoint】GET /health
+【Function】Detect service status and whether the model is loaded successfully
+【Request Parameters】None
+【Response Example】
+{
+"status": "healthy",
+"model_loaded": true,
+"model": "SAM3",
+"version": "2.3.0",
+"endpoints": [
+"/predict/text",
+"/predict/bbox",
+"/predict/combined"
+]
+}
+2. Root Path Information Interface
+【Endpoint】GET /
+【Function】Display basic service information and call examples
+【Request Parameters】None
+【Response Example】
+{
+"message": "SAM3 Semantic Segmentation API v2.3 (Resident Model Optimized Version)",
+"endpoints": {
+"predict_text": "/predict/text",
+"predict_bbox": "/predict/bbox",
+"predict_combined": "/predict/combined"
+},
+"examples": {
+"text": "curl -X POST /predict/text -F\"file=@image.jpg\"-F\"texts=person,bus\"",
+"bbox": "curl -X POST /predict/bbox -F\"file=@image.jpg\"-F 'bboxes=[[100,100,200,200]]' -F\"label=object\"",
+"combined": "curl -X POST /predict/combined -F\"file=@image.jpg\"-F\"texts=person\"-F 'bboxes=[[100,100,200,200]]' -F\"bbox_label=target\""
+}
+}
+3. Text Prompt Segmentation Interface
+【Endpoint】POST /predict/text
+【Function】Segment targets with open vocabulary using text keywords
+【Content-Type】multipart/form-data
+Request Form Parameters
+Table
+Parameter Name	Type	Required	Default Value	Description
+file	file	✅ Required	-	Upload image file
+texts	string	✅ Required	-	Multiple texts separated by English commas, e.g., car,tree,house
+conf	float	❌ Optional	0.25	Confidence threshold, range 0~1, instances below the threshold are filtered
+return_type	string	❌ Optional	contour	Return Type:
+contour: Contour points only
+mask: Base64 mask only
+both: Both contour and mask returned
+num_points	int	❌ Optional	80	Number of contour sampling points, minimum 10
+post_process	string	❌ Optional	medium	Mask post-processing level: none /light/medium /strong
+General Response Structure
+{
+"success": true,
+"image_id": "xxx.png",
+"image_shape": [Height, Width],
+"inference_time": 0.176,
+"total_instances": Total number of instances,
+"results": [
+{
+"category": "car",
+"num_instances": 45,
+"color": [0,120,255],
+"instances": [
+{
+"area": 21450,
+"bbox": [120.5, 340.2, 560.1, 780.3],
+"confidence": 0.76,
+"center": [340.3, 560.2],
+"segmentation": [[x0,y0],[x1,y1],...], //Exists when return_type=contour /both
+"mask": "base64 string" //Exists when return_type=mask /both
+}
+]
+}
+]
+}
+curl Call Example
+curl -X POST http://127.0.0.1:8004/predict/text
+-F "file=@test.jpg"
+-F "texts=car,tree"
+-F "conf=0.25"
+-F "return_type=contour"
+-F "num_points=80"
+-F "post_process=medium"
+4. Bounding Box Prompt Segmentation Interface
+【Endpoint】POST /predict/bbox
+【Function】Input a set of bounding boxes, SAM generates precise masks based on the boxes
+【Content-Type】multipart/form-data
+Request Form Parameters
+Table
+Parameter Name	Type	Required	Default Value	Description
+file	file	✅ Required	-	Upload image file
+bboxes	string	✅ Required	-	JSON string array, format [[x1,y1,x2,y2],...], coordinates are pixel coordinates
+label	string	❌ Optional	object	Category name corresponding to the current batch of boxes
+conf	float	❌ Optional	0.25	Confidence threshold 0~1
+return_type	string	❌ Optional	contour	contour / mask / both
+num_points	int	❌ Optional	80	Number of contour sampling points
+post_process	string	❌ Optional	medium	Mask post-processing level
+curl Call Example
+curl -X POST http://127.0.0.1:8004/predict/bbox
+-F "file=@test.jpg"
+-F 'bboxes=[[50,50,200,220],[300,100,450,320]]'
+-F "label=target"
+-F "conf=0.25"
+-F "return_type=contour"
+5. Combined Prompt Segmentation Interface (Supports both Text + Bounding Box)
+【Endpoint】POST /predict/combined
+【Function】Supports both text prompts and bounding box prompts, with results from both merged in the output
+【Content-Type】multipart/form-data
+Request Form Parameters
+Table
+Parameter Name	Type	Required	Default Value	Description
+file	file	✅ Required	-	Upload image
+texts	string	❌ Optional	null	Text keywords, comma-separated; if not provided, text segmentation will not be performed
+bboxes	string	❌ Optional	null	Bounding box JSON array; if not provided, box segmentation will not be performed
+bbox_label	string	❌ Optional	object	Category name corresponding to the bounding box group
+conf	float	❌ Optional	0.25	Confidence threshold 0~1
+return_type	string	❌ Optional	contour	contour / mask / both
+num_points	int	❌ Optional	80	Number of contour points
+post_process	string	❌ Optional	medium	Mask post-processing level
+Constraint: At least one of 'texts' or 'bboxes' must be provided, otherwise a 400 error is returned
+curl Call Example
+curl -X POST http://127.0.0.1:8004/predict/combined
+-F "file=@test.jpg"
+-F "texts=car"
+-F 'bboxes=[[100,100,250,300]]'
+-F "bbox_label=sign"
+-F "conf=0.25"
+Unified Error Code Description
+HTTP 400 Invalid request parameters, image cannot be read, or parameter range error
+HTTP 500 Internal service exception (inference error, model anomaly)
+HTTP 504 Inference timeout (exceeds 120 seconds limit)
+Important Business Notes
+segmentation contour array: Closed contour, start and end coordinates are the same
+mask field: PNG grayscale image base64 encoded, foreground 255, background 0
+bbox format: [xmin, ymin, xmax, ymax] pixel coordinates
+center: Mask centroid coordinates [cx, cy]
+area: Total number of pixels contained in the mask
+color: RGB color array, used for frontend visualization rendering

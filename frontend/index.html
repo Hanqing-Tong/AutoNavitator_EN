@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Mirror - Automated Map Imagery AI Analysis System</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Include Leaflet.js for map display -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Include marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Include KaTeX for mathematical formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cloud Mirror System 🛰️</h1>
+            <p>Automated Map Imagery AI Analysis</p>
+        </header>
+
+        <!-- Step 1: Imagery Retrieval (moved to header) -->
+        <section class="card">
+            <h2>1. Map Imagery Retrieval</h2>
+            <div class="map-retrieval-layout">
+                <div class="map-retrieval-left">
+                    <div class="input-group">
+                        <div class="field">
+                            <label>Longitude (Lon)</label>
+                            <input type="number" id="lon" step="0.000001" value="120.725088">
+                        </div>
+                        <div class="field">
+                            <label>Latitude (Lat)</label>
+                            <input type="number" id="lat" step="0.000001" value="30.017839">
+                        </div>
+                        <div class="field">
+                            <label>Radius (m)</label>
+                            <input type="number" id="radius" value="20">
+                        </div>
+                        <button id="btn-crop" class="btn-primary">Batch Crop Imagery</button>
+                    </div>
+                    <div class="tif-selection-area">
+                        <div class="tif-header">
+                            <span>Available Imagery List</span>
+                            <button id="toggle-all-btn" onclick="toggleAllTifs()">Select All</button>
+                        </div>
+                        <div id="tif-list-container" class="tif-list">
+                            <div class="loading-text">Loading imagery list...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="map-retrieval-right">
+                    <div id="tianditu-section" class="tianditu-card">
+                        <h3>Satellite Map</h3>
+                        <div class="map-wrapper">
+                            <div id="tianditu-map" style="width:100%; height:300px; border-radius:8px;"></div>
+                        </div>
+                        <div id="place-name" class="place-name">Waiting for coordinates...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="main-layout">
+            <div class="left-panel">
+                <!-- Step 2: AI Analysis -->
+                <section class="card" id="analysis-section" style="display: none;">
+            <h2>2. Intelligent Object Analysis</h2>
+            <div id="image-gallery" class="gallery" style="margin-bottom: 20px;">
+                <!-- Cropped images will be dynamically generated here -->
+            </div>
+                <div class="input-group">
+                    <div class="field wide">
+                        <label>Target to Identify (e.g., river, reservoir, building, garbage...)</label>
+                        <input type="text" id="instruction" placeholder="Please enter the name of the object to identify...">
+                    </div>
+                    <button id="btn-analyze" class="btn-success">Start AI Analysis</button>
+                </div>
+            
+                <div id="analysis-loading" class="loading" style="display: none;">
+                    <div class="spinner"></div> Intelligent analysis in progress, please wait...
+                </div>
+
+            <div id="mask-gallery" class="gallery">
+                <!-- Mask results will be dynamically generated here -->
+            </div>
+        </section>
+            </div>
+
+            <div class="right-panel">
+                <div id="report-container" class="report-card" style="display: none;">
+                    <div class="report-header">
+                        <h3>Analysis Report</h3>
+                        <button id="btn-export" class="btn-export">Export DOCX Report</button>
+                    </div>
+                    <div id="report-content" class="markdown-body"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+
+    <!-- Full-screen image preview modal -->
+    <div id="image-lightbox" onclick="closeLightbox(event)">
+        <span id="close-lightbox" class="close-btn" onclick="closeLightbox(event)">&times;</span>
+        <div id="lightbox-content">
+            <!-- Single image mode -->
+            <img id="lightbox-img" src="" alt="Full size preview" style="display:none;">
+            
+            <!-- Overlay mode (direct rendered image overlay) -->
+            <div id="comparison-container" style="display:none;">
+                <div class="comparison-wrapper">
+                    <img id="comp-img-base" src="" class="comp-img-base">
+                    <img id="comp-img-overlay" src="" class="comp-img-overlay">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
